@@ -1,0 +1,1592 @@
+---
+title: "Applied Statistical Analysis of COVID-19 Patterns Across EU/EEA Countries"
+author: "Final Project – Group 1"
+date: "November 2025"
+output:
+  html_document:
+    toc: true
+    theme: united
+params:
+  Authors:
+    - "Sara A. Alsiyat"
+    - "Michael Dawson"
+  Professor: Dr. Irene Tsapara
+  course: MSDS 401 | Applied Statistics with R
+#subtitle: Final Project – Applied Statistical Analysis using R
+
+highlight: tango
+---
+
+<hr style="border:0; border-top:2px solid #836EAA; margin:30px 0;">
+
+Authors:  `r params$Authors`  
+Professor:  `r params$Professor`  
+Course:  `r params$course`  
+
+<hr style="border:0; border-top:2px solid #836EAA; margin:30px 0;">
+
+
+```{r setup, include=FALSE}
+# DO NOT CHANGE THIS CODE
+knitr::opts_chunk$set(echo = FALSE, eval = TRUE, message = FALSE, warning = FALSE, fig.width = 7, fig.height = 4)
+```
+
+
+```{r custom-css, results='asis', echo=FALSE}
+cat("
+<style>
+/* === Northwestern Custom Theme === */
+:root {
+  --nu-purple: #4E2A84;
+  --nu-light-purple: #6F42C1;
+  --nu-gray: #4B5563;
+}
+
+/* Page background */
+body {
+  background-color: #E4E0EE;
+  font-family: 'Segoe UI', Arial, sans-serif;
+  color: #111827;
+  line-height: 1.6;
+}
+
+/* Headings */
+h1, h2 {
+  color: white;
+  background-color: var(--nu-purple);
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin-top: 25px;
+}
+h3 {
+  background-color: transparent;
+  color: var(--nu-purple);
+  border: none;
+}
+
+/* Horizontal line styling */
+hr {
+  border-top: 2px solid var(--nu-light-purple);
+  margin: 30px 0;
+}
+
+/* Figure captions */
+.figure > .caption, figcaption, caption {
+  color: #3B3B3B;
+  font-size: 12px;
+  font-style: italic;
+  text-align: left;
+  caption-side: top;
+}
+
+/* Centered title banner */
+.center-banner {
+  text-align: center;
+  margin: 20px 0 40px 0;
+  font-size: 1.1rem;
+  color: var(--nu-purple);
+}
+
+/* Highlighted inline badge */
+.badge {
+  display: inline-block;
+  background: var(--nu-light-purple);
+  color: white;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+}
+
+/* Clean centered footer */
+.footer-note {
+  background-color: var(--nu-purple);
+  color: white;
+  text-align: center;
+  padding: 10px;
+  margin-top: 40px;
+  font-size: 14px;
+  border-radius: 0 0 8px 8px;
+}
+
+/* Override link color for references */
+a {
+  color: #4E2A84 !important;  
+  text-decoration: none;
+}
+
+a:hover {
+  color: #6F42C1 !important;  
+  text-decoration: underline;
+}
+
+</style>
+")
+```
+
+```{r toc-color, results='asis', echo=FALSE}
+cat("
+<style>
+/* ===== TOC Styling — Transparent Background Version ===== */
+
+/* TOC sidebar and structure */
+#TOC, .tocify, .tocify-header, .tocify-subheader {
+  background-color: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* TOC main links */
+#TOC a, 
+.tocify-item a, 
+.tocify-item, 
+.tocify-header a {
+  color: #4a4848 !important;   /* dark gray text */
+  font-weight: 500;
+  text-decoration: none !important;
+}
+
+/* Hovered link */
+#TOC a:hover, 
+.tocify-item a:hover, 
+.tocify-header a:hover {
+  color: #4E2A84 !important;
+  background-color: transparent !important;
+}
+
+/* Active (selected) link */
+.tocify-item.active a,
+.tocify-header.active a {
+  color: #4E2A84 !important;
+  font-weight: 700;
+  background-color: transparent !important;
+  border-left: 3px solid #4E2A84;
+  padding-left: 6px;
+}
+
+#TOC a:visited {
+  color: #4a4848 !important;
+}
+
+.tocify-subheader .tocify-item.active:before {
+  content: '▸ ';
+  color: #4E2A84;
+}
+</style>
+")
+
+```
+
+# Introduction
+
+The purpose of this report is to conduct a comprehensive statistical analysis of COVID-19 patterns across selected EU/EEA countries from 2020 to 2022, using official data obtained from the European Centre for Disease Prevention and Control (ECDC). The analysis is designed to explore regional variations in transmission, mortality outcomes, and epidemic wave dynamics, and to develop a structured approach for comparing countries using descriptive, inferential, correlational, and predictive methods. The study begins with a regional assessment of all EU/EEA countries to highlight broad differences across Northern, Western, Southern, and Eastern Europe. Based on these observations, six countries representing distinct regional characteristics are selected for deeper examination. Subsequent sections evaluate trends in incidence and fatality rates, quantify their relationships, statistically test differences between specific countries, and prepare the foundation for regression modeling. This structured approach ensures the analysis captures the full diversity of pandemic behaviors across Europe and provides a clear, data-driven basis for all methodological decisions.
+
+<hr style="border:0; border-top:2px solid #836EAA; margin:30px 0;">
+
+# Data Source and Preparation
+
+The analysis uses publicly available COVID-19 surveillance data from the European Centre for Disease Prevention and Control (ECDC), which provides daily reported cases, deaths, and population estimates for all EU/EEA countries. Each row represents a single country on a specific date, enabling detailed longitudinal tracking of pandemic dynamics. Several data-processing steps were applied to prepare the dataset for analysis. Variable names were simplified for clarity, with the reporting date converted to a proper date object and countries and territories renamed as countries. To allow meaningful comparison across countries of different sizes, two standardized epidemiological measures were constructed: the incidence rate (daily new cases per 100,000 population) and the fatality rate (daily new deaths per 100,000 population). These were incorporated into the dataset for consistent use across descriptive, inferential, and regression procedures.
+
+Negative case and death values "reflecting national reporting corrections rather than true epidemiological events" were not removed in order to preserve the integrity of cumulative totals used later in the regression model. These values occur when countries reconcile earlier over-reported counts, and keeping them maintains consistency with official reporting practices.
+
+To support regional-level comparisons, a geographic classification variable was created based on the United Nations M49 system (United Nations Statistics Division 2024), with a small adjustment to better reflect contemporary socioeconomic and epidemiological patterns. Specifically, Estonia, Latvia, and Lithuania were reassigned from Northern Europe to Eastern Europe, as the Baltic states align more closely with Eastern Europe in terms of health-system structure, economic context, and pandemic trajectories. This adjustment produces more coherent regional groupings for examining differences in transmission intensity, fatality levels, and wave timing across Europe.
+
+Finally, 7-day rolling averages were computed for incidence and fatality rates to smooth weekday reporting effects and administrative fluctuations. This smoothing method is widely used in epidemiological surveillance (ECDC 2022) and provides a clearer representation of epidemic wave structures.
+
+```{r Datasetup, message = FALSE, warning = FALSE}
+
+library(dplyr)
+library(ggplot2)
+library(gridExtra)
+library(knitr)
+library(rockchalk)
+library(tidyverse)
+library(car)
+library(moments)
+library(broom)
+library(kableExtra)
+library(lubridate)
+library(Hmisc)
+library(zoo)
+library(tidyr)
+library(scales)
+
+
+# --- Read data directly from ECDC ---
+data <- read.csv("https://opendata.ecdc.europa.eu/covid19/nationalcasedeath_eueea_daily_ei/csv",
+                 na.strings = "", fileEncoding = "UTF-8-BOM")
+
+# --- Custom table style ---
+nice_table <- function(df, caption = "Table") {
+  kable(df, align = "c", caption = caption) %>%
+    kable_styling(
+      bootstrap_options = c("striped", "hover", "condensed"),
+      full_width = TRUE,
+      font_size = 12) %>%
+    row_spec(0, background = "#482674", color = "white", bold = TRUE, align = "center")}
+
+# --- Custom dataset overview table ---
+nice_glimpse <- function(df, caption = "Table 0. Dataset Structure Overview") {
+  structure_tbl <- data.frame(
+    Variable = names(df),
+    Type = sapply(df, class),
+    Missing = colSums(is.na(df)),
+    Unique_Values = sapply(df, function(x) length(unique(x))))
+  nice_table(structure_tbl, caption = caption)}
+
+# --- Clean, rename, and prepare data ---
+data <- data %>%
+  select(-c("continentExp")) %>%
+  mutate(
+    date = dmy(dateRep),
+    countriesAndTerritories = as.factor(countriesAndTerritories),
+    geoId = as.factor(geoId),
+    countryterritoryCode = as.factor(countryterritoryCode)) %>%
+  rename(countries = countriesAndTerritories) %>%
+  mutate(
+    incidence_rate = (cases / popData2020) * 100000,
+    fatality_rate  = (deaths / popData2020) * 100000)
+
+# ---  UN M49 Regions for ALL countries ---
+region_map <- list(
+  "Northern Europe" = c("Denmark","Finland","Iceland","Ireland",
+                        "Norway","Sweden"),
+
+  "Western Europe"  = c("Austria","Belgium","France","Germany",
+                        "Liechtenstein","Luxembourg","Netherlands"),
+
+  "Eastern Europe"  = c("Bulgaria","Czechia","Hungary","Poland",
+                        "Romania","Slovakia","Estonia","Latvia","Lithuania"),
+
+  "Southern Europe" = c("Croatia","Cyprus","Greece","Italy","Malta",
+                        "Portugal","Slovenia","Spain"))
+
+
+# Convert list → data frame
+region_df <- stack(region_map)
+colnames(region_df) <- c("countries", "region")
+
+# Join to main dataset
+data <- data %>%
+  left_join(region_df, by = "countries")
+
+#data <- data %>% filter(cases >= 0, deaths >= 0)
+
+nice_glimpse(data)
+```
+
+Table 0 summarizes the structure of the cleaned dataset, showing each variable’s type, number of missing values, and count of unique entries. The structure reflects all preprocessing steps, including converting dates, creating standardized incidence and fatality rates, and adding UN-based regional classifications. Some missing values appear in the original case and death counts—and therefore in the derived rates—due to reporting gaps in the ECDC dataset, while all other variables are complete. The large number of unique values for the date and rate variables highlights the dataset’s daily granularity, and the 30 unique country identifiers correspond to the full EU/EEA sample prior to selecting the six focus countries. Overall, the table indicates that the dataset is well-organized and suitable for the analyses that follow.
+
+<hr style="border:0; border-top:2px solid #836EAA; margin:30px 0;">
+
+# Regional Analysis
+
+The regional analysis provides a broad overview of COVID-19 patterns across the EU/EEA and serves as a foundation for selecting a representative set of countries for deeper statistical investigation. By grouping EU/EEA nations into four UN-based regional classifications: Northern, Western, Southern, and Eastern Europe, this step allows us to examine differences in transmission intensity, mortality patterns, and epidemic wave timing at the regional level. Because the pandemic unfolded unevenly across Europe, understanding these regional characteristics ensures that subsequent analyses are not influenced solely by one region’s experience but instead reflect the diverse epidemiological, demographic, and healthcare contexts across the continent.
+
+```{r REGIONALANALYSIS, fig.align='center', fig.width=12, fig.height=2.8, out.width='100%'}
+
+#REGIONAL ANALYSIS — ALL EU/EEA COUNTRIES
+
+# ============================================================
+# Compute 7-day rolling averages for ALL countries
+# ============================================================
+
+data_full <- data %>% filter(!is.na(region))
+
+# Compute rolling averages
+data_full <- data_full %>%
+  group_by(countries) %>%
+  arrange(date) %>%
+  mutate(
+    incidence_7day = zoo::rollmean(incidence_rate, 7, fill = NA, align = "right"),
+    fatality_7day  = zoo::rollmean(fatality_rate, 7, fill = NA, align = "right")
+  ) %>%
+  ungroup()
+
+# ============================================================
+# FIGURE R1 — Mean Incidence by Region
+# ============================================================
+
+region_incidence_full <- data_full %>%
+  group_by(region) %>%
+  summarise(Mean_Incidence = mean(incidence_rate, na.rm = TRUE)) %>%
+  mutate(label_y = Mean_Incidence / 2)
+
+ggplot(region_incidence_full,
+       aes(x = reorder(region, -Mean_Incidence),
+           y = Mean_Incidence, fill = region)) +
+  geom_col(color = "black", linewidth = 0.3) +
+
+  # Centered label inside bar
+  geom_text(aes(y = label_y, label = sprintf("%.2f", Mean_Incidence)),
+            color = "white", fontface = "bold", size = 6) +
+
+  scale_fill_manual(values = c(
+    "Northern Europe"="#836EAA","Western Europe"="#482674",
+    "Eastern Europe"="#9C27B0","Southern Europe"="#AB47BC")) +
+
+  labs(title="Figure R1. Average Incidence Rate per 100K by Region (All EU/EEA Countries)",
+       x="Region", y=NULL) +
+
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face="italic", size=15, color="#3B3B3B"),
+    axis.title.y = element_blank(),
+    axis.text.y  = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    legend.position = "none" )
+
+# ============================================================
+# FIGURE R2 — Mean Fatality by Region (Centered Labels)
+# ============================================================
+
+
+region_fatality_full <- data_full %>%
+  group_by(region) %>%
+  summarise(Mean_Fatality = mean(fatality_rate, na.rm = TRUE)) %>%
+  mutate(label_y = Mean_Fatality / 2)
+
+ggplot(region_fatality_full,
+       aes(x = reorder(region, -Mean_Fatality),
+           y = Mean_Fatality, fill = region)) +
+  geom_col(color = "black", linewidth = 0.3) +
+
+  geom_text(aes(y = label_y, label = sprintf("%.3f", Mean_Fatality)),
+            color = "white", fontface = "bold", size = 6) +
+
+  scale_fill_manual(values = c(
+    "Northern Europe"="#836EAA","Western Europe"="#482674",
+    "Eastern Europe"="#9C27B0","Southern Europe"="#AB47BC")) +
+
+  labs(title="Figure R2. Average Fatality Rate per 100K by Region (All EU/EEA Countries)",
+       x="Region", y=NULL) +
+
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face="italic", size=15, color="#3B3B3B"),
+    axis.title.y = element_blank(),
+    axis.text.y  = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    legend.position = "none" )
+
+
+# ============================================================
+# FIGURE R3 — Regional Incidence Trends (Faceted by Region)
+# ============================================================
+
+region_trends <- data_full %>%
+  group_by(region, date) %>%
+  summarise(Incidence_7day = mean(incidence_7day, na.rm = TRUE)) %>%
+  ungroup()
+
+ggplot(region_trends,
+       aes(x = date, y = Incidence_7day, color = region)) +
+  geom_line(linewidth = 0.8, alpha = 0.8) +
+  geom_smooth(se = FALSE, linewidth = 1.2, span = 0.25) +
+  facet_wrap(~ region, ncol = 2, scales = "fixed") +
+  scale_color_manual(values = c(
+    "Northern Europe"="#836EAA","Western Europe"="#482674",
+    "Eastern Europe"="#9C27B0","Southern Europe"="#AB47BC")) +
+  labs(title="Figure R3. Regional COVID-19 Incidence Trends (7-Day Average, 2020–2022)",
+       x="Date", y="Incidence Rate (per 100K)") +
+  theme_minimal(base_size = 13) +
+  theme(plot.title    = element_text(face="italic", size=16, color="#3B3B3B"),
+        plot.subtitle = element_text(color="#4B5563", size=12, hjust=0.5),
+        strip.text    = element_text(face="bold", size=12, color="#482674"),
+        axis.title    = element_text(face="bold"),
+        axis.text     = element_text(color="black"),
+        legend.position = "none")
+
+
+# ============================================================
+# FIGURE R4 — CFR by Region (Centered Labels)
+# ============================================================
+
+region_cfr_full <- data_full %>%
+  group_by(region) %>%
+  summarise(
+    Total_Cases  = sum(cases, na.rm = TRUE),
+    Total_Deaths = sum(deaths, na.rm = TRUE),
+    CFR = (Total_Deaths / Total_Cases) * 100
+  ) %>%
+  mutate(label_y = CFR / 2)
+
+ggplot(region_cfr_full,
+       aes(x = reorder(region, -CFR), y = CFR, fill = region)) +
+  geom_col(color = "black", linewidth = 0.3) +
+
+  geom_text(aes(y = label_y, label = sprintf("%.2f%%", CFR)),
+            color = "white", fontface = "bold", size = 6) +
+
+  scale_fill_manual(values = c(
+    "Northern Europe"="#836EAA","Western Europe"="#482674",
+    "Eastern Europe"="#9C27B0","Southern Europe"="#AB47BC")) +
+
+  labs(title="Figure R4. Case Fatality Ratio (CFR) by Region (All EU/EEA Countries)",
+       x="Region", y=NULL) +
+
+  theme_minimal() +
+  theme(
+    plot.title = element_text(face="italic", size=15, color="#3B3B3B"),
+    axis.title.y = element_blank(),
+    axis.text.y  = element_blank(),
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    legend.position = "none" )
+```
+
+The four regional figures highlight notable differences in incidence, fatality, and epidemic wave behavior across Europe. In Figure R1, Western Europe exhibits the highest average incidence level (≈50.90 per 100K), followed by Southern Europe (≈46.70). Northern Europe (≈39.39) and Eastern Europe (≈34.35) show comparatively lower transmission. These contrasts indicate that the intensity of reported infection varied meaningfully across regions during the study period.
+
+Figure R2 presents a different ordering. Eastern Europe shows the highest average fatality rate (≈0.382 deaths per 100K), substantially exceeding the rates observed in the other three regions. Northern Europe reports the lowest fatality level (≈0.131), with Western Europe (≈0.222) and Southern Europe (≈0.285) falling between the two extremes. This suggests that mortality outcomes relative to population size were not uniform across the continent.
+
+The temporal patterns shown in Figure R3 further illustrate how the progression of the pandemic differed by region. Western and Northern Europe experienced pronounced, high-amplitude waves—particularly during late 2021 and early 2022—while Eastern and Southern Europe show more moderate but persistent wave patterns. These differences in timing and magnitude reveal that the trajectory of the pandemic did not evolve in a synchronized manner across regions.
+
+Finally, Figure R4 shows that Eastern Europe holds the highest case-fatality ratio (≈1.57%), whereas Northern (≈0.44%) and Western Europe (≈0.43%) display substantially lower ratios, with Southern Europe (≈0.74%) positioned in between. This reinforces a consistent pattern in which Eastern Europe bears a disproportionate mortality burden relative to reported cases.
+
+Taken together, the regional patterns shown in Figures R1–R4 highlight substantial differences in transmission intensity, fatality levels, and epidemic wave timing across Europe. These disparities underscore the importance of drawing from multiple regions rather than relying on a single geographic area. Accordingly, six countries were selected to form a balanced and representative subset for the analyses that follow. As shown in Table 1, the final selection includes Finland from Northern Europe; France and Germany from Western Europe; Italy from Southern Europe; and Czechia and Lithuania representing Eastern and Baltic Europe. This group captures a broad range of epidemiological dynamics and ensures that the subsequent statistical analyses reflect the diverse experiences observed across the EU/EEA.
+
+```{r CountriesSelection, message = FALSE, warning = FALSE}
+
+# --- Filter for selected EU/EEA countries ---
+focus_countries <- c("Finland", "France", "Czechia", "Lithuania", "Germany", "Italy")
+
+covid_eu <- data %>%
+  filter(countries %in% focus_countries)
+
+covid_eu$date <- as.Date(covid_eu$date)
+
+# --- Styled summary of filtered dataset ---
+country_summary <- covid_eu %>%
+  count(countries, name = "Record_Count") %>%
+  arrange(desc(Record_Count))
+
+nice_table(country_summary,
+           caption = "Table 1. Observation Counts for the Six Countries Selected After Regional Analysis")
+
+```
+
+<hr style="border:0; border-top:2px solid #836EAA; margin:30px 0;">
+
+
+# Descriptive Statistics
+
+The Descriptive Statistics section presents an exploratory data analysis (EDA) of COVID-19 incidence and fatality patterns across the six selected countries. This stage provides a foundational understanding of the dataset by summarizing key statistical measures—such as mean levels, variability, and peak values—and identifying broad differences in transmission intensity and mortality. The accompanying visualizations of 7-day rolling averages help clarify the timing, scale, and shape of epidemic waves, while country-level CFR comparisons offer additional insight into how infection levels translated into health outcomes. Collectively, these descriptive findings establish the necessary context for the inferential testing and regression modeling that follow.
+
+```{r descriptive_stats, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# ============================================================
+# Exploratory Data Analysis (EDA)
+# ============================================================
+
+covid_eu <- covid_eu %>%
+  group_by(countries) %>%
+  arrange(date) %>%
+  mutate(
+    incidence_7day = zoo::rollmean(incidence_rate, 7, fill = NA, align = "right"),
+    fatality_7day  = zoo::rollmean(fatality_rate, 7, fill = NA, align = "right")) %>%
+  ungroup()
+
+```
+
+```{r Table2, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+### --- Overview ---
+# The exploratory data analysis begins by summarizing the daily incidence and fatality rates
+# for each of the six selected EU/EEA countries. Descriptive statistics such as mean, standard deviation,
+# and maximum values help identify differences in COVID-19 spread and mortality across regions.
+# These metrics provide an initial understanding of data variability and highlight countries
+# with higher infection or death rates relative to population size.
+
+# --- Table 2: Descriptive Summary Statistics ---
+
+eda_summary <- covid_eu %>%
+  group_by(countries) %>%
+  summarise(
+    Mean_Incidence = mean(incidence_rate, na.rm = TRUE),
+    SD_Incidence   = sd(incidence_rate, na.rm = TRUE),
+    Mean_Fatality  = mean(fatality_rate, na.rm = TRUE),
+    SD_Fatality    = sd(fatality_rate, na.rm = TRUE),
+    Max_Incidence  = max(incidence_rate, na.rm = TRUE),
+    Max_Fatality   = max(fatality_rate, na.rm = TRUE) ) %>%
+  arrange(desc(Mean_Incidence)) %>%
+  mutate(
+    Mean_Incidence = formatC(Mean_Incidence, format = "f", digits = 2, big.mark = ","),
+    SD_Incidence   = formatC(SD_Incidence, format = "f", digits = 2, big.mark = ","),
+    Mean_Fatality  = formatC(Mean_Fatality, format = "f", digits = 2, big.mark = ","),
+    SD_Fatality    = formatC(SD_Fatality, format = "f", digits = 2, big.mark = ","),
+    Max_Incidence  = formatC(Max_Incidence, format = "f", digits = 2, big.mark = ","),
+    Max_Fatality   = formatC(Max_Fatality, format = "f", digits = 2, big.mark = ","))
+
+nice_table(
+  eda_summary,
+  caption = "Table 2. Descriptive Summary of Incidence and Fatality Rates by Country (2020–2022)")
+
+```
+
+Table 2 shows clear differences in COVID-19 incidence and fatality levels across the six countries. France records the highest average incidence rate (54.06), while Finland shows the lowest (23.60), reflecting a comparatively milder epidemic. Fatality patterns differ as well: Czechia (0.39) and Lithuania (0.34) exhibit the highest average fatality rates, whereas Finland again remains the lowest at 0.11. The maximum values further indicate that France (745.15), Lithuania (551.59), and Czechia (535.32) experienced the most intense incidence peaks, while France (2.98) and Czechia (2.44) reached the highest fatality peaks. Overall, the table highlights substantial variation in disease burden and wave severity across countries, providing useful context for the visual analyses that follow.
+
+```{r Figure1, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# ============================================================
+
+### --- Purpose ---
+# This visualization shows the smoothed (7-day rolling average) daily incidence rates per 100K people.
+# Faceted panels make trends across the six selected EU/EEA countries easier to compare
+# without overlapping lines or noise from daily reporting fluctuations.
+
+### --- Figure 1. 7-Day Average Incidence Rate per 100K ---
+
+### --- Identify peak incidence per country ---
+peak_incidence <- covid_eu %>%
+  group_by(countries) %>%
+  filter(incidence_7day == max(incidence_7day, na.rm = TRUE)) %>%
+  slice(1) %>%
+  ungroup()
+
+ggplot(covid_eu, aes(x = date, y = incidence_7day, color = countries)) +
+  geom_line(linewidth = 0.9) +
+
+  # Peak point
+  geom_point(
+    data = peak_incidence,
+    aes(x = date, y = incidence_7day),
+    color = "black",
+    size = 2.5) +
+
+  # Peak label with correct unit
+  geom_text(
+  data = peak_incidence,
+  aes( x = date - 20, y = incidence_7day + 20, label = paste0(sprintf("%.2f", incidence_7day), " cases")),
+  nudge_x = 40, nudge_y = 50, size = 3, fontface = "bold") +
+
+  facet_wrap(~countries, scales = "fixed", ncol = 3) +
+
+  scale_color_manual(values = c(
+    "Finland"   = "#836EAA",
+    "France"    = "#482674",
+    "Czechia"   = "#9C27B0",
+    "Lithuania" = "#8E44AD",
+    "Germany"   = "#6A1B9A",
+    "Italy"     = "#AB47BC" )) +
+
+  labs(
+    title = "Figure 1. 7-Day Average COVID-19 Incidence Rate per 100K (2020–2022)",
+    x = "Date",
+    y = "Incidence Rate (cases per 100K)" ) +
+
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.text      = element_text(face = "bold", color = "black", size = 10),
+    plot.title      = element_text(face = "italic", size = 15, color = "#3B3B3B"),
+    axis.title      = element_text(face = "bold"),
+    axis.text       = element_text(color = "black"),
+    legend.position = "none" )
+```
+
+Figure 1 displays the time series of the 7-day average COVID-19 incidence rate per 100,000 people for the six selected countries from 2020 to 2022, presented as a faceted plot. The chart clearly reveals significant heterogeneity in the epidemic trajectories among these nations. The timing and intensity of epidemic peaks varied considerably. France, Czechia, Italy, and Lithuania experienced the sharpest and most pronounced peaks—particularly during late 2021 and early 2022—when Omicron led to a rapid surge in transmission. In contrast, Finland’s incidence curve remained noticeably lower and flatter throughout the study period, reflecting a comparatively milder epidemic. Overall, despite all being in Europe, these six countries experienced distinctly different patterns in pandemic transmission dynamics.
+
+
+```{r Figure2, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# ============================================================
+# Figure 2. 7-Day Average COVID-19 Fatality Rate per 100K
+
+### --- Purpose ---
+# This visualization shows the smoothed (7-day rolling average) daily fatality rates per 100K people.
+# The uniform axes across all panels allow direct comparison of mortality levels between countries.
+
+### --- Identify peak fatality per country ---
+peak_fatality <- covid_eu %>%
+  group_by(countries) %>%
+  filter(fatality_7day == max(fatality_7day, na.rm = TRUE)) %>%
+  slice(1) %>%
+  ungroup()
+
+### --- Figure 2 (Uniform Axes, Clear Labels) ---
+
+ggplot(covid_eu, aes(x = date, y = fatality_7day, color = countries)) +
+  geom_line(linewidth = 0.9) +
+
+  # Peak point
+  geom_point(
+    data = peak_fatality,
+    aes(x = date, y = fatality_7day),
+    color = "black",
+    size = 2.5) +
+
+  # Peak label with correct unit
+  geom_text(
+    data = peak_fatality,
+    aes(
+      x = date - 20,
+      y = fatality_7day,
+      label = paste0(sprintf("%.2f", fatality_7day), " deaths") ),
+    nudge_x = 40,
+    nudge_y = 0.8,
+    size = 3,
+    fontface = "bold" ) +
+
+  facet_wrap(~countries, scales = "fixed", ncol = 3) +
+
+  scale_color_manual(values = c(
+    "Finland"   = "#836EAA",
+    "France"    = "#482674",
+    "Czechia"   = "#9C27B0",
+    "Lithuania" = "#8E44AD",
+    "Germany"   = "#6A1B9A",
+    "Italy"     = "#AB47BC")) +
+
+  labs(
+    title = "Figure 2. 7-Day Average COVID-19 Fatality Rate per 100K (2020–2022)",
+    x = "Date",
+    y = "Fatality Rate (deaths per 100K)") +
+
+  theme_minimal(base_size = 12) +
+  theme(
+    strip.text      = element_text(face = "bold", color = "black", size = 10),
+    plot.title      = element_text(face = "italic", size = 15, color = "#3B3B3B"),
+    axis.title      = element_text(face = "bold"),
+    axis.text       = element_text(color = "black"),
+    legend.position = "none")
+
+```
+
+Figure 2 also uses a faceted plot to show the time series of the 7-day average COVID-19 fatality rate per 100,000 people for the six countries. When comparing these trends with the incidence patterns in Figure 1, several observations emerge. First, in most countries the fatality peaks appear 2 to 4 weeks after the major incidence peaks, which reflects the typical time lag between infection and severe outcomes. Second, differences in fatality levels across countries are substantial: Czechia and Lithuania display the highest peaks, particularly during late 2020 and early 2021, with maximum fatality rates well above all other countries. Finally, the figure shows a clear decoupling between incidence and fatality in the later stages of the pandemic. In Finland and France, incidence rates rose sharply during late 2021 and early 2022, yet fatality rates remained relatively low and did not rise proportionally. This indicates a weakened link between infection levels and mortality during the later period, likely due to widespread vaccination and reduced severity of circulating variants.
+
+
+```{r Table3, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# ============================================================
+### --- Table 3: Case Fatality Rate (CFR) per Country ---
+
+
+cfr_summary <- covid_eu %>%
+  group_by(countries) %>%
+  summarise(
+    Total_Cases  = sum(cases, na.rm = TRUE),
+    Total_Deaths = sum(deaths, na.rm = TRUE),
+    CFR_Percent  = round((Total_Deaths / Total_Cases) * 100, 4) ) %>%
+  arrange(desc(CFR_Percent)) %>%
+  mutate(
+    Total_Cases  = comma(Total_Cases),
+    Total_Deaths = comma(Total_Deaths) )
+
+nice_table(
+  cfr_summary,
+  caption = "Table 3. Case Fatality Rate (CFR) by Country: Total Deaths as % of Total Cases")
+
+```
+
+Table 3 summarizes the overall Case Fatality Rate (CFR) for each country and shows meaningful differences in the proportion of deaths relative to confirmed cases. Czechia has the highest CFR—nearly 1%—indicating a comparatively severe mortality burden. Italy and Lithuania also exhibit elevated CFRs, while Finland, Germany, and France report lower fatality proportions. These differences suggest that the countries varied not only in infection levels but also in health-system outcomes and mortality risks, reinforcing the need to analyze each country’s epidemic trajectory separately.
+
+```{r Figure3, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# ============================================================
+## --- Calculate summary metrics ---
+median_cfr <- median(cfr_summary$CFR_Percent, na.rm = TRUE)
+
+### --- Figure 3: CFR Comparison Bar Chart (Median Only) ---
+
+ggplot(cfr_summary, aes(x = reorder(countries, -CFR_Percent),
+                        y = CFR_Percent, fill = countries)) +
+  geom_bar(stat = "identity", width = 0.7, color = "black", linewidth = 0.2) +
+
+  # Median CFR line 
+  geom_hline(
+    yintercept = median_cfr,
+    linetype = "dotted",color = "#4B5563", linewidth = 1.2) +
+
+  # Median label
+  annotate(
+    "text",
+    x = 0.2, y = median_cfr + 0.06,
+    label = sprintf("Median= %.2f%%", median_cfr),
+    color = "#4B5563",fontface = "bold", size = 2.5,hjust = 0) +
+
+  # CFR labels on bars (2 decimals)
+  geom_text(
+    aes(label = sprintf("%.2f%%", CFR_Percent)),
+    vjust = -0.6,size = 3, fontface = "bold") +
+
+  scale_fill_manual(values = c(
+    "Finland"   = "#836EAA",
+    "France"    = "#482674",
+    "Czechia"   = "#9C27B0",
+    "Lithuania" = "#8E44AD",
+    "Germany"   = "#6A1B9A",
+    "Italy"    = "#AB47BC")) +
+
+  # Y-axis in percent
+  scale_y_continuous(
+    labels = scales::percent_format(scale = 1),
+    expand = expansion(mult = c(0, .1))) +
+
+  labs(
+    title = "Figure 3. Case Fatality Rate (CFR) by Country (2020–2022)",
+    x = "Country", y = "Case Fatality Rate (%)" ) +
+
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title  = element_text(face = "italic", size = 15, color = "#3B3B3B"),
+    axis.title  = element_text(face = "bold"),
+    axis.text   = element_text(color = "black"),
+    legend.position = "none",
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank()) +
+
+  coord_cartesian(ylim = c(0, max(cfr_summary$CFR_Percent) + 0.4))
+
+```
+
+Figure 3 compares the cumulative Case Fatality Rate (CFR) for the six selected countries across the full study period. The chart shows clear differences in the proportion of deaths relative to reported cases. Czechia has the highest CFR at 1.00%, followed closely by Italy (0.76%) and Lithuania (0.74%), indicating a higher mortality burden in these countries. In contrast, Finland (0.48%), Germany (0.43%), and France (0.43%) report noticeably lower CFRs, suggesting comparatively better outcomes relative to case numbers. These patterns are consistent with the fatality trends observed earlier in Figure 2 and may reflect differences in healthcare capacity, population age structure, vaccination uptake, and national testing/reporting practices across countries.
+
+
+```{r Outliers, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# ============================================================
+# OUTLIER ANALYSIS — INCIDENCE & FATALITY (SIDE-BY-SIDE TABLES)
+# ============================================================
+extreme_values <- covid_eu %>%
+  group_by(countries) %>%
+  summarise(
+    Incidence_250 = sum(incidence_rate > 250, na.rm = TRUE),
+    Incidence_400 = sum(incidence_rate > 400, na.rm = TRUE),
+    Fatality_2    = sum(fatality_rate > 2, na.rm = TRUE),
+    Fatality_5    = sum(fatality_rate > 5, na.rm = TRUE))
+
+nice_table(
+  extreme_values,
+  caption = "Table 4. Summary of Extreme Incidence and Fatality Values by Country")
+
+```
+
+Table 5 summarizes the frequency of extreme incidence and fatality values across the six selected countries. The results show that France and Lithuania recorded the highest number of days with exceptionally elevated incidence levels, particularly above the 250- and 400-per-100K thresholds, reflecting periods of intense transmission. Germany, Italy, and Czechia also experienced notable spikes, though less frequently than France. In contrast, Finland shows no extreme incidence values, consistent with its lower average infection levels shown earlier in the analysis.
+
+For fatality rates, extreme values were rare across all countries, with only Czechia and Lithuania showing a meaningful number of days above 2 deaths per 100K. No country displayed any days exceeding 5 deaths per 100K. These patterns further reinforce the earlier findings: high-incidence waves did not always translate into proportionally severe mortality outcomes, highlighting differences in healthcare capacity, population vulnerability, and pandemic response across countries.
+
+<hr style="border:0; border-top:2px solid #836EAA; margin:30px 0;">
+
+
+# Inferential Statistics
+
+The Inferential Statistics section evaluates whether the differences observed in the descriptive analysis reflect genuine underlying disparities or simply random variation. For this analysis, Germany and Italy are selected as the two countries of interest. While some country pairs—such as France and Finland—show much larger differences in their mean incidence levels, testing such an obvious gap would offer limited analytical value, as the hypothesis test would almost certainly identify a statistically significant difference. Germany and Italy, by contrast, have similar average daily incidence rates yet display distinct epidemic wave patterns, making them a more informative and analytically meaningful pair for formal hypothesis testing.
+
+The early phase of the COVID-19 pandemic produced markedly different outcomes in Italy and Germany, driven by distinct national factors. Italy experienced a severe initial crisis, intensified by an aging population and a strained hospital system, which contributed to high fatality rates. However, Italy’s performance improved in subsequent waves, in part due to strong public adherence to health guidelines, such as urban mask-wearing compliance reaching roughly 90%, compared to Germany’s 65% (Bontempi, 2021).
+Germany, by contrast, benefited early on from a robust healthcare infrastructure and coordinated governmental response, though its public adherence to containment policies was comparatively lower. Population size also plays a role, as Germany is the most populous country in the dataset. Although both countries have similar population densities—around 200 people per square kilometer, with Germany slightly higher—they remain among the most densely populated in the EU. Research suggests that population is positively correlated with COVID-19 deaths per capita (Papanikos, 2022).
+Tourism adds another dimension, as higher travel volumes can accelerate viral spread. Italy received roughly twice as many tourists as Germany, increasing its exposure. These contrasting factors; public adherence versus healthcare capacity, tourism intensity, and population density make Italy and Germany an illuminating comparison for understanding what drives infection and mortality outcomes.
+
+
+**Research Question:**
+Does the evidence support a real difference in the average daily COVID-19 incidence between Germany and Italy—two countries with closely aligned descriptive statistics but differing epidemic trajectories?
+
+To address this question, we first apply an independent two-sample t-test, a method widely used in epidemiological and public-health research when comparing mean case or fatality rates between two independent groups. Prior COVID-19 studies have used the same approach; for example, Tsiang (2021) applied two-sample t-tests to evaluate regional differences in U.S. incidence and mortality. Consistent with conventions in biomedical research, we adopt a significance level of α = 0.05, a standard threshold also used in published COVID-19 comparisons such as Russell (2022). To complement the mean-based t-test, we also include a nonparametric Wilcoxon Rank-Sum test to compare the distributions of daily incidence values without assuming normality.
+
+Before conducting the test, the required assumptions are examined. The independence assumption is satisfied because Germany and Italy represent two distinct populations, and each day’s incidence rate is measured separately within each country. Since all values have already been standardized to rates per 100,000 population, the two groups remain independent while also being directly comparable. Approximate normality is supported by the large number of observations in each group, and Levene’s test is used to determine whether the equal-variance (pooled) or unequal-variance (Welch) version of the t-test is appropriate. With these conditions satisfied, the test is performed, the confidence interval is interpreted, and the results are used to determine whether the null hypothesis should be rejected or retained.
+
+```{r inferential_stats, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# ------------------------------------------------------------
+# Filter dataset for the two chosen countries: Germany & Italy
+# ------------------------------------------------------------
+two_countries <- covid_eu %>%
+  filter(countries %in% c("Germany", "Italy")) %>%
+  select(date, countries, incidence_rate) %>%
+  arrange(countries, date)
+
+# 7-day rolling averages
+two_countries <- two_countries %>%
+  group_by(countries) %>%
+  mutate(incidence_7day = zoo::rollmean(incidence_rate, k = 7, fill = NA, align = "right")) %>%
+  ungroup()
+
+```
+
+```{r Figure4, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# ------------------------------------------------------------
+### FIGURE 4 — Daily 7-Day Average Incidence Rates (Improved Line Plot)
+# ------------------------------------------------------------
+
+ggplot(two_countries, aes(x = date, y = incidence_7day, color = countries)) +
+  geom_line(linewidth = 1.1) +
+  labs(
+    title = "Figure 4. Daily 7-Day Average Incidence Rates: Germany vs Italy",
+    x = "Date",
+    y = "Incidence Rate (per 100K)",
+    color = "Country") +
+  scale_color_manual(values = c("Germany" = "#6A1B9A", "Italy" = "#AB47BC")) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "italic", size = 16, color = "#3B3B3B"),
+    axis.title = element_text(face = "bold"),
+    axis.text  = element_text(color = "black"),
+    legend.position = "bottom")
+
+```
+
+```{r Figure5, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# ------------------------------------------------------------
+### FIGURE 6 — Violin + Boxplot for Distribution Comparison
+# ------------------------------------------------------------
+
+ggplot(two_countries, aes(x = countries, y = incidence_rate, fill = countries)) +
+  geom_boxplot(width = 0.45, alpha = 0.85, outlier.shape = NA, color = "black") +
+  geom_jitter(alpha = 0.25, width = 0.18, size = 1, color = "#3B3B3B") +
+  scale_fill_manual(values = c(
+    "Germany" = "#6A1B9A",
+    "Italy"   = "#AB47BC")) +
+  coord_cartesian(ylim = c(0, 300)) +
+  labs(
+    title = "Figure 5. Distribution of Daily Incidence Rates: Germany vs Italy",
+    x = "Country",
+    y = "Incidence Rate (per 100K)") +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "italic", size = 16, color = "#3B3B3B"),
+    axis.title = element_text(face = "bold"),
+    axis.text = element_text(color = "black"),
+    legend.position = "none")
+
+```
+
+Figures 4 and 5 provide a visual comparison of Germany and Italy across both their epidemic trajectories and the distribution of their daily incidence rates. The time-series plot (Figure 4) shows that both countries experienced broadly similar pandemic wave patterns, with aligned surges during 2021 and early 2022, although Italy displays sharper and higher peaks during the Omicron wave while Germany shows broader but slightly lower peaks across the same period. The distribution plot (Figure 5) further highlights these distinctions: Germany exhibits a wider spread of daily incidence values, with more days reaching higher levels above 100–150 cases per 100K, whereas Italy’s distribution is more concentrated and characterized by fewer but more intense spikes. Together, these figures show that while the two countries share comparable mean incidence levels, their underlying distributions differ meaningfully—Germany displaying greater variability and Italy showing more extreme short-term peaks—making them a suitable and analytically informative pair for hypothesis testing.
+
+```{r table5.1, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# ------------------------------------------------------------
+### TABLE 5.1 — Summary Statistics for Hypothesis Testing
+# ------------------------------------------------------------
+
+summary_tbl <- two_countries %>%
+  group_by(countries) %>%
+  summarise(
+    Mean = round(mean(incidence_rate, na.rm = TRUE), 4),
+    SD   = round(sd(incidence_rate, na.rm = TRUE), 4),
+    N    = sum(!is.na(incidence_rate)))
+
+nice_table(summary_tbl,
+           caption = "Table 5.1. Summary Statistics for Germany and Italy")
+
+
+# ------------------------------------------------------------
+### Step 1: Hypotheses
+# H0: μ_Germany = μ_Italy
+# H1: μ_Germany ≠ μ_Italy
+# α = 0.05
+# ------------------------------------------------------------
+```
+
+Table 5.1 summarizes the descriptive statistics used in the hypothesis test. Germany’s mean daily incidence rate (42.77 per 100K) is only slightly higher than Italy’s (40.21 per 100K), and both countries have large sample sizes (Germany: N = 992; Italy: N = 974). These large samples support the use of large-sample inference and help stabilize the estimates.
+
+```{r Table5.2, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# ------------------------------------------------------------
+### Step 2: Levene’s Test for Equality of Variances
+# ------------------------------------------------------------
+
+levene <- car::leveneTest(incidence_rate ~ countries, data = two_countries)
+levene_tbl <- broom::tidy(levene)
+
+nice_table(levene_tbl,
+           caption = "Table 5.2. Levene’s Test for Equality of Variances")
+
+
+```
+
+Before performing the t-test, Levene’s test was used to evaluate whether the variances of the two groups could be considered equal. As shown in Table 5.2, the resulting p-value (p = 0.105) exceeds the α = 0.05 threshold, providing no evidence of unequal variances. This result justifies the use of the pooled-variance version of the two-sample t-test.
+
+```{r Table5.3, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# ------------------------------------------------------------
+### Step 3: Independent Two-Sample t-Test (Pooled or Welch)
+# ------------------------------------------------------------
+
+var_equal <- ifelse(levene_tbl$p.value[1] > 0.05, TRUE, FALSE)
+
+t_test <- t.test(
+  incidence_rate ~ countries,
+  data = two_countries,
+  var.equal = var_equal,
+  conf.level = 0.95)
+
+t_output <- tidy(t_test)
+
+nice_table(t_output,
+           caption = "Table 5.3. Two-Sample t-Test Results: Germany vs Italy")
+```
+
+The output of the t-test (Table 5.3) shows that the difference in mean daily incidence between Germany and Italy is not statistically significant (t = 0.887, p = 0.375). The 95% confidence interval for the mean difference (−3.10 to 8.22 cases per 100K) spans zero, confirming that the observed difference may simply reflect random variation rather than a true underlying difference in transmission. To complement this mean-based analysis, we also performed a nonparametric Wilcoxon Rank-Sum test to compare the distributions of daily incidence values.
+
+```{r Table5.4, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# ------------------------------------------------------------
+### Step 4: Nonparametric Alternative — Wilcoxon Rank-Sum Test
+# ------------------------------------------------------------
+
+wilcox_res <- wilcox.test(
+  incidence_rate ~ countries,
+  data = two_countries,
+  conf.int = TRUE)
+
+wilcox_tbl <- data.frame(
+  Statistic = wilcox_res$statistic,
+  p_value   = wilcox_res$p.value,
+  CI_low    = wilcox_res$conf.int[1],
+  CI_high   = wilcox_res$conf.int[2])
+
+nice_table(
+  wilcox_tbl,
+  caption = "Table 5.4. Wilcoxon Rank-Sum Test Results: Germany vs Italy")
+
+```
+
+The Wilcoxon Rank-Sum test (Table 5.4) indicates a statistically significant difference in the distribution of daily incidence rates between Germany and Italy (W = 451,237, p = 0.0113). The 95% confidence interval for the difference in medians (−2.82 to −0.27 cases per 100K) does not include zero, suggesting that Italy’s daily incidence values tend to be slightly higher than Germany’s when comparing their central tendencies. While the difference is small in magnitude, the nonparametric test detects a modest but statistically meaningful shift in the distributions.
+
+**Conclusion:**
+Based on the two-sample t-test and the 5% significance level, we fail to reject the null hypothesis that the mean daily incidence rates in Germany and Italy are equal. This indicates no statistically significant difference in their average transmission levels from 2020 to 2022.
+
+However, the Wilcoxon Rank-Sum test reveals a small but statistically significant difference in the distributions of daily incidence rates, with Italy showing slightly higher median incidence. This suggests that although the two countries share similar mean incidence levels, Italy tends to experience modestly higher day-to-day incidence, reflecting subtle but meaningful differences in epidemic patterns.
+
+<hr style="border:0; border-top:2px solid #836EAA; margin:30px 0;">
+
+# Correlation
+
+To examine how transmission intensity relates to mortality risk across countries, this section analyzes the relationship between daily COVID-19 incidence rates and fatality rates using all EU/EEA observations in the dataset. Because both variables are continuous and measured on a comparable interval scale (daily cases and deaths per 100,000 population), the Pearson Product–Moment Correlation Coefficient is selected as the most appropriate measure of linear association. Pearson correlation is commonly used in epidemiological studies to assess how changes in infection levels relate to changes in mortality outcomes.
+
+This approach is supported by published COVID-19 research. Iqbal et al. (2022) conducted a multi-country study across Europe and used Pearson correlation to analyze relationships between case rates, death rates, vaccination coverage, and variant dynamics, demonstrating the suitability of this method for pandemic-related indicators (Iqbal et al. 2022).
+
+In this analysis, both country and date identifiers are removed so that each record represents a single paired observation of incidence and fatality rates. This design ensures that the correlation captures the overall association across the full EU/EEA dataset, without being driven by the unique epidemic patterns of any single country. After computing the correlation and conducting a hypothesis test, the resulting coefficient is interpreted to assess both its magnitude and statistical significance.
+  
+```{r correlation, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# =============================================================
+# Use all EU/EEA observations (entire dataset after region mapping)
+# =============================================================
+pooled_data <- data_full %>%
+  select(incidence_rate, fatality_rate) %>%
+  filter(!is.na(incidence_rate), !is.na(fatality_rate))
+
+```
+
+
+```{r Figure6, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# =============================================================
+# Figure 6 — Distribution of Daily Incidence Rates (Trimmed)
+# =============================================================
+
+ggplot(pooled_data, aes(x = incidence_rate)) +
+  geom_density(fill = "#836EAA", alpha = 0.7) +
+  coord_cartesian(xlim = c(0, 500)) +
+  labs(
+    title = "Figure 6. Distribution of Daily Incidence Rates (All EU/EEA Countries)",
+    x = "Incidence Rate (per 100K)",
+    y = "Density") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face="italic", size=15, color="#3B3B3B"),
+    axis.title = element_text(face="bold"),
+    axis.text  = element_text(color="black") )
+
+```
+
+```{r Figure7, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# =============================================================
+# Figure 7 — Distribution of Daily Fatality Rates (Trimmed)
+# =============================================================
+
+ggplot(pooled_data, aes(x = fatality_rate)) +
+  geom_density(fill = "#482674", alpha = 0.7) +
+  coord_cartesian(xlim = c(0, 5)) +
+  labs(
+    title = "Figure 7. Distribution of Daily Fatality Rates (All EU/EEA Countries)",
+    x = "Fatality Rate (per 100K)",
+    y = "Density") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face="italic", size=15, color="#3B3B3B"),
+    axis.title = element_text(face="bold"),
+    axis.text  = element_text(color="black")
+  )
+
+```
+
+Figures 6 and 7 provide an overview of the distribution of daily incidence and fatality rates across all EU/EEA countries. Both distributions are highly right-skewed, with the majority of daily observations concentrated at low values and a long right tail reflecting occasional extreme spikes during major waves. The incidence distribution shows that most days fall below 50 cases per 100K, with only a small proportion exceeding 200. Similarly, fatality rates are typically close to zero on most days, with only a limited number of observations rising above 1 death per 100K. This pattern aligns with the overall pandemic structure across Europe: long periods of stable or moderate activity punctuated by brief, intense surges. The trimmed x-axes improve readability for the visualizations, but all values—including outliers—were retained in the underlying analysis.
+
+
+```{r Figure8, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# =============================================================
+# Figure 8: Scatterplot Showing Correlation
+# =============================================================
+
+ggplot(pooled_data, aes(x = incidence_rate, y = fatality_rate)) +
+  geom_point(alpha = 0.25, size = 1.2, color = "#6A1B9A") +
+  geom_smooth(method = "lm", se = FALSE, color = "#AB47BC", linewidth = 1) +
+  coord_cartesian(xlim = c(0, 500), ylim = c(0, 5)) +
+  labs(
+    title = "Figure 8. Relationship Between Incidence and Fatality Rates (All EU/EEA Countries)",
+    x = "Incidence Rate (per 100K)",
+    y = "Fatality Rate (per 100K)") +
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title = element_text(face="italic", size=15, color="#3B3B3B"),
+    axis.title = element_text(face="bold"),
+    axis.text  = element_text(color="black")
+  )
+
+```
+
+Figure 8 visualizes the relationship between daily incidence and fatality rates across all EU/EEA countries, with each point representing a single day of data. The scatterplot reveals substantial variability, with most observations clustered at low fatality levels even when incidence is high. The fitted regression line shows a slight upward slope, indicating a weak positive association between incidence and fatality rates. In other words, higher incidence days are somewhat more likely to coincide with higher fatality rates, but the relationship is weak and highly dispersed, suggesting that many other factors—such as healthcare capacity, vaccination coverage, and reporting delays—shape daily mortality outcomes.
+
+
+```{r Table6, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# =============================================================
+# Pearson Correlation (All EU/EEA Observations)
+# =============================================================
+
+cor_value <- cor(
+  pooled_data$incidence_rate,
+  pooled_data$fatality_rate,
+  method = "pearson")
+
+cor_test <- cor.test(
+  pooled_data$incidence_rate,
+  pooled_data$fatality_rate,
+  method = "pearson")
+
+cor_tbl <- data.frame(
+  Correlation = round(cor_value, 4),
+  p_value     = round(cor_test$p.value, 6),
+  CI_low      = round(cor_test$conf.int[1], 4),
+  CI_high     = round(cor_test$conf.int[2], 4))
+
+nice_table(
+  cor_tbl,
+  caption = "Table 6. Pearson Correlation Between Incidence and Fatality Rates (All EU/EEA Countries)")
+
+```
+
+Table 6 presents the Pearson correlation coefficient measuring the association between daily COVID-19 incidence rates and fatality rates across all EU/EEA countries. The estimated correlation is r = 0.1126, with a p-value < 0.001 and a narrow 95% confidence interval ranging from 0.1011 to 0.1241, indicating that the relationship is statistically significant due to the very large sample size.
+
+However, despite its statistical significance, the magnitude of the correlation is weak. An r-value of 0.1126 suggests that increases in daily incidence rates are associated with only small increases in fatality rates, and the relationship is far from linear or strong. This pattern aligns with broader epidemiological findings across Europe: while higher transmission can increase pressure on healthcare systems, fatality outcomes are also heavily influenced by vaccination coverage, variant characteristics, age structures, healthcare capacity, and reporting practices, all of which vary substantially across countries.
+
+In practical terms, this means that days with high numbers of new cases do not consistently correspond to days with high numbers of deaths across the EU/EEA dataset. The weak correlation is also consistent with the observed decoupling between cases and deaths during the later stages of the pandemic—particularly during the Omicron wave—when fatality rates remained relatively low even as case rates reached historic highs.
+
+Overall, the correlation analysis shows that COVID-19 incidence and fatality rates are related, but only weakly so, underscoring the importance of considering additional epidemiological and structural factors when interpreting mortality patterns.
+
+While the full EU/EEA dataset provides an overall picture of how incidence and fatality rates are related across Europe, it is also important to examine whether this relationship differs within the six focus countries selected earlier in the analysis. Because each of these countries experienced the pandemic differently—with distinct health-system capacities, demographic profiles, and epidemic wave timing—the strength and direction of the correlation may vary substantially at the country level.
+
+
+```{r Table7, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# ============================================================
+
+### --- Table 7: Correlation Between Incidence and Fatality Rates ---
+
+corr_results <- covid_eu %>%
+  group_by(countries) %>%
+  summarise(
+    Correlation = cor(incidence_rate, fatality_rate, use = "complete.obs"),
+    p_value     = cor.test(incidence_rate, fatality_rate)$p.value ) %>%
+  mutate(
+    Correlation = round(Correlation, 4),
+    p_value     = round(p_value, 4),
+
+    # Interpretation of correlation strength
+    Interpretation = case_when(
+      Correlation >= 0.70  ~ "Strong positive association",
+      Correlation >= 0.30  ~ "Moderate positive association",
+      Correlation >  0     ~ "Weak positive association",
+      Correlation == 0     ~ "No association",
+      Correlation <   0    ~ "Negative relationship" ),
+
+    # Significance at α = 0.05
+    Significance = case_when(
+      p_value < 0.001 ~ "Highly significant",
+      p_value < 0.01  ~ "Very significant",
+      p_value < 0.05  ~ "Significant",
+      TRUE            ~ "Not significant" ) ) %>%
+  arrange(desc(Correlation))   # Rank ordering
+
+nice_table(
+  corr_results,
+  caption = "Table 7. Correlation Between Incidence and Fatality Rates by Country")
+
+```
+
+Table 7 reports the Pearson correlation coefficients for each of the six countries separately. The results confirm that the relationship between incidence and fatality rates is not uniform across settings. Finland shows a very strong positive association, indicating that increases in case levels were closely followed by increases in mortality. Czechia and Lithuania exhibit moderate correlations, suggesting a meaningful but less tightly coupled relationship. In contrast, Germany, Italy, and France show only weak correlations, reinforcing the earlier observation that in some countries—especially during later pandemic waves—fatality rates no longer rose proportionally with increases in transmission.
+
+```{r Figure9, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# ============================================================
+
+### --- Figure 9 (Facet Version): One Panel per Country ---
+
+ggplot(covid_eu, aes(x = incidence_rate, y = fatality_rate, color = countries)) +
+  geom_point(alpha = 0.4, size = 1.5) +
+  geom_smooth(method = "lm", se = FALSE, linewidth = 0.8) +
+
+  scale_color_manual(values = c(
+    "Finland"   = "#836EAA",
+    "France"    = "#482674",
+    "Czechia"   = "#9C27B0",
+    "Lithuania" = "#8E44AD",
+    "Germany"   = "#6A1B9A",
+    "Italy"    = "#AB47BC")) +
+
+  facet_wrap(~countries, scales = "free") +
+
+  labs(
+    title = "Figure 9. Relationship Between Incidence and Fatality Rates (2020–2022)",
+    x = "Incidence Rate (per 100K)",
+    y = "Fatality Rate (per 100K)" ) +
+
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title  = element_text(face = "italic", size = 15, color = "#3B3B3B"),
+    axis.title  = element_text(face = "bold"),
+    axis.text   = element_text(color = "black"),
+    legend.position = "none",
+    strip.text = element_text(face = "bold", color = "#482674"))
+```
+
+Figure 9 visualizes these country-specific relationships by plotting the daily incidence and fatality rates for each country with an overlaid regression line. The scatterplots reflect the same patterns seen in the correlation table: tightly clustered, upward-sloping patterns in Finland, more diffuse but still positive slopes in Czechia and Lithuania, and relatively flat relationships in France, Germany, and Italy. These differences highlight how local factors—including vaccination uptake, age structure, viral variant circulation, and healthcare strain—shaped the connection between infections and deaths.
+
+Together, Table 7 and Figure 9 show that although Europe as a whole demonstrates only a weak correlation between incidence and fatality rates, some countries experienced a much stronger link than others. This underscores the importance of examining country-level patterns rather than relying solely on aggregate results.
+
+
+<hr style="border:0; border-top:2px solid #836EAA; margin:30px 0;">
+
+# Regression
+
+The regression analysis examines how structural country-level characteristics help explain differences in total COVID-19 case counts across Europe. While earlier sections focused on daily patterns and within-country trends, this portion of the analysis shifts to a cross-sectional perspective, where each observation represents a single country. This approach allows us to investigate whether broader demographic and economic factors are associated with the overall scale of the pandemic across nations.
+
+To construct the modeling dataset (model_df), twenty EU/EEA countries were selected to provide a diverse representation of population sizes, geographic areas, and economic conditions. For each country, we compile four key structural attributes: total population (2020 estimates), land area in square kilometers, GDP per capita measured in purchasing power standards (PPS), and population density (population divided by land area). These variables capture important factors commonly linked to infectious disease dynamics—such as population concentration and economic capacity.
+
+To model country-level COVID-19 burden, we calculate the total number of new cases for each country by summing all daily reported cases across the entire ECDC surveillance period. This transforms the raw time series into a single interpretable response variable per country, enabling a regression framework focused on long-term cumulative impact rather than short-term fluctuations.
+
+The regression model uses total cases as the dependent variable and population size, population density, and GDP per capita as the explanatory variables. The objective is to evaluate the extent to which these predictors account for cross-country variation and to assess overall model fit using coefficient significance, confidence intervals, and R². We also consider whether a reduced model—with fewer predictors—may offer a more parsimonious explanation if certain variables do not meaningfully contribute.
+
+To further assess the model’s generalizability, we apply the fitted regression model to predict total COVID-19 cases for two additional countries—Luxembourg and the Netherlands—that were not included in the model-fitting process. Comparing predicted versus observed totals provides an external check on model performance and offers insight into how well the regression captures real-world pandemic dynamics across different European contexts.
+
+```{r regression_a, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# The code below creates a new data frame, 'model_df,' that includes the area,
+# GDP per capita, population and population density for the twenty (20)
+# countries of interest. All you should need to do is execute this code, as is.
+
+# You do not need to add code in this chunk. You will need to add code in the
+# 'regression_b,' 'regression_c' and 'regression_d' code chunks.
+
+twenty_countries <- c("Austria", "Belgium", "Bulgaria", "Cyprus", "Denmark",
+                      "Finland", "France", "Germany", "Hungary", "Ireland",
+                      "Latvia", "Lithuania", "Malta", "Norway", "Poland",
+                      "Portugal", "Romania", "Slovakia", "Spain", "Sweden")
+
+sq_km <- c(83858, 30510, 110994, 9251, 44493, 338145, 551695, 357386, 93030,
+           70273, 64589, 65300, 316, 385178, 312685, 88416, 238397, 49036,
+           498511, 450295)
+
+gdp_pps <- c(128, 118, 51, 91, 129, 111, 104, 123, 71, 190, 69, 81, 100, 142,
+             71, 78, 65, 71, 91, 120)
+
+model_df <- data %>%
+  select(countries, popData2020) %>% 
+  filter(countries %in% twenty_countries) %>%
+  distinct(countries, .keep_all = TRUE) %>%
+  add_column(sq_km, gdp_pps) %>%
+  mutate(
+    pop = popData2020,
+    pop_dens = pop / sq_km) %>%
+  select(country = countries, pop, sq_km, pop_dens, gdp_pps)
+
+
+#--------------
+model_df_display <- model_df %>%
+  mutate(
+    `#` = row_number(),
+    pop = scales::comma(pop), 
+    sq_km = scales::comma(sq_km), 
+    pop_dens = round(pop_dens, 2)  ) %>%
+  select(`#`, everything())
+
+nice_table(
+  model_df_display,
+  caption = "Table 8. Overview of Regression Modeling Dataset")
+
+```
+
+Table 8 summarizes the dataset used for the regression analysis and presents the demographic and economic characteristics of the twenty countries included in the model. Each row corresponds to a single country and includes four key structural variables: total population, land area (sq km), population density, and GDP per capita expressed in purchasing power standards. These measures capture important differences across Europe that may influence the total number of reported COVID-19 cases. The dataset spans countries with wide variation in demographic and economic conditions—from compact, densely populated nations such as Malta to geographically large, sparsely populated countries like Finland and Norway. This diversity ensures that the regression model is fitted on a dataset that reflects meaningful contrasts in population size, density, and economic capacity, providing a solid foundation for evaluating how these factors relate to differences in total COVID-19 case counts across countries.
+
+
+```{r regression_b , fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# ------------------------------------------------------------
+# Compute total COVID-19 cases for each of the 20 countries
+# ------------------------------------------------------------
+total_cases <- data %>%
+  filter(countries %in% twenty_countries) %>%        # keep only the 20 countries
+  group_by(countries) %>%
+  summarise(
+    total_cases = sum(cases, na.rm = TRUE),
+    .groups = "drop" )
+
+# ------------------------------------------------------------
+# Join totals into model_df by matching country names
+# ------------------------------------------------------------
+model_df <- model_df %>%
+  left_join(total_cases, by = c("country" = "countries"))
+
+# ------------------------------------------------------------
+# Display a clean view of the modeling dataset
+# ------------------------------------------------------------
+model_df_display <- model_df %>%
+  mutate(
+    row_id      = row_number(),
+    pop_fmt     = scales::comma(pop),
+    sq_km_fmt   = scales::comma(sq_km),
+    pop_dens    = round(pop_dens, 2),
+    gdp_pps     = gdp_pps,
+    total_fmt   = scales::comma(total_cases)) %>%
+  select(
+    "#" = row_id,
+    country,
+    pop = pop_fmt,
+    sq_km = sq_km_fmt,
+    pop_dens,
+    gdp_pps,
+    total_cases = total_fmt)
+
+nice_table(
+  model_df_display,
+  caption = "Table 9. Regression Dataset with Demographic, Economic, and Total Case Counts")
+
+```
+Table 9 summarizes the dataset used to fit the regression model, combining total COVID-19 case counts with each country’s population, population density, and GDP per capita. These variables capture the structural conditions that may influence how widely the virus spread within each nation. The dataset spans countries with substantial demographic and economic diversity—from Malta, with a population under one million and extremely high density, to Germany, with more than 83 million residents and far lower crowding. Density ranges widely as well, from just 13.9 people per km² in Norway to over 1,600 in Malta, and GDP per capita varies from 51 to 190 PPS units. This variation ensures that the regression model is built on a dataset with meaningful contrasts, providing a strong foundation for evaluating which country-level characteristics are most strongly associated with total COVID-19 case counts across Europe.
+
+
+```{r regression_c, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+
+# ================================================================
+# Fit the multiple linear regression model
+# ================================================================
+model_fit <- lm(total_cases ~ pop + pop_dens + gdp_pps, data = model_df)
+
+# ================================================================
+# Extract tidy regression coefficients
+# ================================================================
+coef_tbl <- broom::tidy(model_fit)
+
+```
+
+```{r Table10, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# Format numbers for display (commas & no scientific notation)
+coef_tbl_clean <- coef_tbl %>%
+  mutate(
+    estimate   = scales::comma(estimate, accuracy = 0.0001),
+    std.error  = scales::comma(std.error, accuracy = 0.0001),
+    statistic  = scales::comma(statistic, accuracy = 0.0001),
+    p.value    = scales::comma(p.value, accuracy = 0.000001) )
+
+nice_table(
+  coef_tbl_clean,
+  caption = "Table 10. Regression Coefficients for Multiple Linear Regression Model")
+
+```
+
+```{r Table10b, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# ================================================================
+# 95% Confidence Intervals
+# ================================================================
+conf_int <- confint(model_fit)
+
+conf_tbl <- data.frame(
+  term   = rownames(conf_int),
+  CI_low  = scales::comma(conf_int[,1], accuracy = 0.0001),
+  CI_high = scales::comma(conf_int[,2], accuracy = 0.0001),
+  row.names = NULL)
+
+nice_table(
+  conf_tbl,
+  caption = "Table 10b. 95% Confidence Intervals for Regression Coefficients")
+
+```
+
+```{r Table11, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# ================================================================
+# Clean Model Fit Summary
+# ================================================================
+model_summary <- summary(model_fit)
+
+fit_tbl <- data.frame(
+  Metric = c(
+    "Multiple R-squared",
+    "Adjusted R-squared",
+    "Residual Std. Error",
+    "F-Statistic",
+    "F-Statistic p-value",
+    "Degrees of Freedom (Model)",
+    "Degrees of Freedom (Residual)",
+    "Sample Size" ),
+  Value = c(
+    scales::comma(model_summary$r.squared, accuracy = 0.0001),
+    scales::comma(model_summary$adj.r.squared, accuracy = 0.0001),
+    scales::comma(model_summary$sigma, accuracy = 1),
+    scales::comma(model_summary$fstatistic[1], accuracy = 0.01),
+    scales::comma(pf(model_summary$fstatistic[1],
+                     model_summary$fstatistic[2],
+                     model_summary$fstatistic[3],
+                     lower.tail = FALSE), accuracy = 0.000001),
+    scales::comma(model_summary$fstatistic[2]),
+    scales::comma(model_summary$fstatistic[3]),
+    nrow(model_df)))
+
+nice_table(
+  fit_tbl,
+  caption = "Table 11. Model Fit Summary for Multiple Linear Regression")
+
+```
+
+The regression model applies a multiple linear regression framework to evaluate whether population size, population density, and GDP per capita explain differences in total COVID-19 case counts across twenty EU/EEA countries. This approach is appropriate because the outcome variable is continuous, all predictors are numeric, and the goal is to assess the combined influence of several country-level structural characteristics. Multiple linear regression is widely used in public-health and epidemiological research for cross-country COVID-19 analyses, making it a suitable choice for this study.
+
+The results in Table 10 show that population size is the only statistically significant predictor of total COVID-19 cases. Its coefficient (0.4268) indicates that as population increases, total case counts rise proportionally, and its 95% confidence interval in Table 10b (0.3500 to 0.5037) does not include zero, confirming a stable and meaningful effect. In contrast, population density and GDP per capita are not statistically significant; both have wide confidence intervals that span zero and relatively large standard errors, suggesting they do not provide meaningful explanatory power once population is included.
+
+Model fit statistics in Table 11 indicate that the regression performs well. The R² of 0.8982 shows that roughly 90% of the variation in total case counts across countries is explained by the predictors, and the adjusted R² of 0.8791 remains high after accounting for model complexity. The F-statistic of 47.03 with a p-value < 0.001 confirms that the model is statistically significant overall. Although the residual standard error is large (3,655,290), this is fully expected given the scale of country-level COVID-19 case totals.
+
+Overall, the analysis indicates that population size is the primary structural factor associated with total COVID-19 case counts across countries, while population density and GDP per capita do not meaningfully improve predictive accuracy in this dataset. Although a reduced model using only population could be considered, the full model is retained to preserve the original analytical structure and to transparently present results for all selected explanatory variables.
+
+```{r regression_d}, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+# =============================
+# 1. Create new data for prediction
+# =============================
+newdata <- data.frame(
+  country = c("Luxembourg", "Netherlands"),
+  pop = c(626108, 17407585),
+  gdp_pps = c(261, 130),
+  pop_dens = c(626108/2586, 17407585/41540))
+
+# =============================
+# 2. Get actual total cases from dataset
+# =============================
+actual_cases_df <- data %>%
+  filter(countries %in% newdata$country) %>%
+  group_by(countries) %>%
+  summarise(actual_cases = sum(cases, na.rm = TRUE), .groups = "drop") %>%
+  rename(country = countries)
+
+# =============================
+# 3. Predict using our model (model_fit)
+# =============================
+pred_cases <- predict(model_fit, newdata = newdata)
+
+# =============================
+# 4. Build comparison_df (ACTUAL, PREDICTED, RESIDUAL)
+# =============================
+comparison_df <- newdata %>%
+  left_join(actual_cases_df, by = "country") %>%
+  mutate(
+    predicted_cases = round(pred_cases),
+    residual = actual_cases - predicted_cases ) %>%
+  select(country, actual_cases, predicted_cases, residual)
+
+comparison_df_display <- comparison_df %>%
+  mutate(
+    actual_cases    = scales::comma(actual_cases),
+    predicted_cases = scales::comma(predicted_cases),
+    residual        = scales::comma(residual))
+
+nice_table(
+  comparison_df_display,
+  caption = "Table 12. Predicted vs. Actual Total COVID-19 Cases")
+
+# ==============================
+# 6. Figure 10 — Actual vs Predicted Total Cases (Styled Consistently)
+# ==============================
+
+plot_df <- comparison_df %>%
+  select(country, actual_cases, predicted_cases) %>%
+  pivot_longer(
+    cols = c(actual_cases, predicted_cases),
+    names_to = "Type",
+    values_to = "Cases" ) %>%
+  mutate(
+    Type = ifelse(Type == "actual_cases", "Actual", "Predicted"))
+
+
+ggplot(plot_df, aes(x = country, y = Cases, fill = Type)) +
+  
+  # Bars
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  
+  # Text ABOVE the bars in clean black
+  geom_text(
+    aes(label = scales::comma(Cases)),
+    position = position_dodge(width = 0.7),
+    vjust = -0.3,        # above the bar
+    size = 4.5,
+    fontface = "bold",
+    color = "black" ) +
+  
+  # Y-axis scaling (no scientific notation)
+  scale_y_continuous(
+    labels = scales::comma,
+    expand = expansion(mult = c(0, 0.12))  ) +
+  
+  # Project colors
+  scale_fill_manual(
+    values = c("Actual" = "#3B2F63", "Predicted" = "#9B4F96") ) +
+  
+  labs(
+    title = "Figure 10. Actual vs Predicted Total COVID-19 Cases",
+    x = "Country",
+    y = NULL,
+    fill = "Case Type" ) +
+  
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(
+      face = "italic", size = 16, color = "#3B3B3B"),
+    axis.text.y        = element_blank(),
+    axis.ticks.y       = element_blank(),
+    panel.grid.major.y = element_blank(),
+    legend.position    = "right")
+```
+The final step of the regression analysis evaluates how well the model generalizes to countries that were not included in the fitting process. Table 12 and Figure 10 compare predicted and actual cumulative COVID-19 cases for Luxembourg and the Netherlands.
+
+For the Netherlands, the model performs reasonably well. The predicted total—approximately 7.52 million—is close to the actual 8.49 million, indicating that the regression captures the broad structural relationship between population, density, economic conditions, and COVID-19 burden for countries whose characteristics fall within the range represented in the training dataset.
+
+Luxembourg, however, is a clear outlier. The model predicts nearly 3.95 million cases, while the true total is only 301,031. This severe overestimation arises because Luxembourg combines two extreme features: a very small population and an exceptionally high GDP per capita, far above the range observed in the countries used to train the model. With a linear model, such extreme predictor values cause the fitted equation to extrapolate far outside the domain where its relationships are reliable. In addition, countries with very small populations do not follow proportional patterns assumed by linear regression, leading to unstable and unrealistic predictions.
+
+These findings highlight that the multiple linear regression model generalizes well to countries with demographic and economic profiles similar to those in the training data but fails for microstates or structural outliers such as Luxembourg. A more appropriate modeling strategy would apply transformations—such as modeling the logarithm of total cases or using standardized outcomes (e.g., cases per 100,000 population)—to reduce scale distortion and prevent the model from extrapolating beyond its reliable range. Refitting the model using a log-transformed response variable is expected to produce more reasonable predictions for countries with atypical size or economic structure.
+
+```{r regression_Improved}, fig.align='center', fig.width=12, fig.height=3, out.width='100%'}
+
+# ============================================================
+# 1. Build actual case totals for Luxembourg & Netherlands
+# ============================================================
+
+actual_cases_df <- data %>%
+  select(countries, cases) %>%                        # <-- correct column name
+  group_by(countries) %>%
+  summarise(total_cases = sum(cases, na.rm = TRUE), .groups = "drop") %>%
+  rename(country = countries) %>%                     # <-- rename to match newdata$country
+  filter(country %in% c("Luxembourg", "Netherlands"))
+
+
+# ============================================================
+# 2. Fit improved log-transformed model on the 20-country model_df
+# ============================================================
+
+model_fit_log <- lm(
+  log(total_cases) ~ log(pop) + pop_dens + gdp_pps,
+  data = model_df)
+
+
+# ============================================================
+# 3. Predict values for Luxembourg & Netherlands
+# ============================================================
+
+pred_cases_log <- exp(predict(model_fit_log, newdata = newdata))
+
+
+# ============================================================
+# 4. Build comparison table (actual vs predicted + residual)
+# ============================================================
+
+comparison_df_log <- newdata %>%
+  left_join(actual_cases_df, by = "country") %>%
+  mutate(
+    predicted_cases = round(pred_cases_log),
+    actual_cases = total_cases,
+    residual = actual_cases - predicted_cases) %>%
+  select(country, actual_cases, predicted_cases, residual)
+
+comparison_df_log_table <- comparison_df_log %>%
+  mutate(
+    actual_cases = scales::comma(actual_cases),
+    predicted_cases = scales::comma(predicted_cases),
+    residual = scales::comma(residual) )
+
+nice_table(
+  comparison_df_log_table,
+  caption = "Table 13. Improved Model: Predicted vs. Actual COVID-19 Cases")
+
+
+
+# ============================================================
+# 5. Bar plot — clean readable labels OUTSIDE bars
+# ============================================================
+plot_df_log <- comparison_df_log %>%
+  pivot_longer(cols = c(actual_cases, predicted_cases),
+               names_to = "Type", values_to = "Cases") %>%
+  mutate(Type = ifelse(Type == "actual_cases", "Actual", "Predicted"))
+
+ggplot(plot_df_log, aes(x = country, y = Cases, fill = Type)) +
+  geom_col(position = position_dodge(width = 0.7), width = 0.6) +
+  geom_text(aes(label = scales::comma(Cases)),
+            position = position_dodge(width = 0.7),
+            vjust = -0.5,
+            size = 4,
+            fontface = "bold",
+            color = "black") +
+  scale_fill_manual(values = c("Actual" = "#2E2459", "Predicted" = "#9C4E97")) +
+  labs(
+    title = "Figure 11. Improved Model: Actual vs Predicted Total COVID-19 Cases",
+    x = "Country",
+    y = NULL,
+    fill = "Case Type") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "italic", size = 18, color = "#3B3B3B"),
+    axis.text.x = element_text(face = "bold"),
+    axis.title.y = element_blank(),
+    axis.text.y = element_blank(),  
+    axis.ticks.y = element_blank(),   
+    panel.grid.major.y = element_blank(), 
+    panel.grid.minor.y = element_blank(),
+    legend.position = "right" ) +
+  scale_y_continuous(labels = scales::comma_format(),
+                     expand = expansion(mult = c(0, .15)))
+
+```
+
+Table 13 compares the actual and predicted total COVID-19 case counts for Luxembourg and the Netherlands using the improved regression model. After applying a log transformation to both the response variable and the predictors, the resulting predictions become far more realistic than those produced by the untransformed model. For Luxembourg, the model predicts approximately 447,508 cases compared with the observed 301,031, yielding a residual of roughly –146,477. For the Netherlands, the model estimates about 5.65 million cases versus the actual 8.49 million, resulting in a residual of approximately 2.84 million. Although these discrepancies remain meaningful, they are substantially smaller than the extreme errors from the original linear model, demonstrating that the log transformation improves prediction stability—particularly for small or atypical countries.
+
+Luxembourg’s initial extreme overprediction illustrates the difficulty of modeling very small, high-income, high-density countries using only broad structural variables such as population size, GDP per capita, and density. Even after transformation, the remaining error suggests that important epidemiological and policy-driven determinants are missing from the simplified model. According to WHO (2022) and ECDC (2022), national case trajectories were heavily shaped by vaccination rollout, testing intensity, non-pharmaceutical interventions, and the timing of circulating variants—factors not captured in this basic structural framework. OECD (2021) further notes that cross-country differences in age distribution, comorbidity burden, and healthcare-system capacity significantly influence both transmission and reporting, which helps explain why structurally similar countries can still experience very different pandemic outcomes.
+
+These limitations are also supported by empirical research. Iqbal et al. (2022) demonstrate that vaccination levels, circulating variants, and demographic composition strongly shape cross-country differences in both case burden and mortality. Evidence from the WHO European Region further shows that vaccination programs reduced COVID-19 mortality by approximately 59%, with the largest benefits concentrated among older populations (Meslé et al., 2024). Such findings highlight that vaccination strategy, health-system resilience, and population risk structure play central roles in determining pandemic impact—factors that a model based solely on structural variables cannot fully capture. Likewise, Tsiang (2021) shows that local policy environments and structural characteristics meaningfully influence comparative COVID-19 outcomes, reinforcing the need for richer and more contextual predictors.
+
+Overall, the improved regression model provides more stable and reasonable predictions, particularly for countries that fall closer to the demographic and economic profile of the training sample. However, significant gaps remain for countries with unusual characteristics or unique public-health responses. Incorporating epidemiological, behavioral, and policy-related variables—such as vaccination coverage, age structure, healthcare capacity, testing intensity, and intervention stringency—would substantially strengthen the model and improve predictive performance for both typical and atypical European countries.
+
+<hr style="border:0; border-top:2px solid #836EAA; margin:30px 0;">
+
+# Conclusion
+
+This project analyzed COVID-19 dynamics across EU/EEA countries using descriptive, inferential, correlation, and regression methods to understand how transmission, fatality patterns, and structural country characteristics shaped the overall trajectory of the pandemic. The exploratory analysis revealed substantial variability in epidemic waves across nations, including periods of extreme incidence and mortality that reflected distinct national surges. The hypothesis test comparing Germany and Italy confirmed that their small differences in mean incidence rates were not statistically significant, emphasizing the importance of distinguishing random variation from true epidemiological differences.
+
+The correlation analysis showed a weak but statistically significant positive association between incidence and fatality rates across all EU/EEA countries. This finding indicates that higher transmission levels were linked to higher mortality, but also that many additional factors—such as age structure, vaccination coverage, and healthcare capacity—played critical roles in determining fatality outcomes. The regression analysis further highlighted the complexity of cross-country variation. Population size was the only consistently strong predictor of total case counts, while population density and GDP per capita offered limited explanatory power. Even after applying an improved model with log-transformed variables, predictions for atypical countries such as Luxembourg remained imprecise, underscoring the limitations of relying solely on structural indicators. This aligns with evidence from ECDC (2022), WHO (2022), and OECD (2021), which emphasizes the influence of vaccination programs, health-system resilience, testing strategies, and variant circulation on national case trajectories.
+
+Overall, the multi-method results demonstrate that COVID-19 patterns cannot be explained by any single factor. While population size clearly shapes the scale of national case burdens, broader demographic, health, and policy-related conditions critically influence transmission intensity and mortality risk. Incorporating richer epidemiological and behavioral variables in future analyses would enable more accurate predictive modeling and yield deeper insights into the diverse pandemic experiences across Europe.
+
+<hr style="border:0; border-top:2px solid #836EAA; margin:30px 0;">
+
+# References
+
+Bontempi, E. 2021. “The Europe Second Wave of COVID-19 Infection and the Italy ‘Strange’ Situation.” Environmental Research 193.
+
+ECDC. 2022. COVID-19 Surveillance Report: EU/EEA Overview. European Centre for Disease Prevention and Control. https://www.ecdc.europa.eu.
+
+Iqbal, H., M. Umair, S. A. Rizvi, and M. A. Cheema. 2022. “A Correlation Study of COVID-19 in Europe Considering Different Vaccines, Age Groups and Variants Including Delta and Omicron.” BioMed 2 (2): 133–169. https://doi.org/10.3390/biomed2020015.
+
+Meslé, Margaux M. I., Jeremy Brown, Piers Mook, Mark A. Katz, José Hagan, Roberta Pastore, Bernhard Benka, et al. 2024. “Estimated Number of Lives Directly Saved by COVID-19 Vaccination Programmes in the WHO European Region from December 2020 to March 2023: A Retrospective Surveillance Study.” The Lancet Respiratory Medicine 12 (9).
+
+OECD. 2021. Health at a Glance: Europe 2021 – State of Health in the EU Cycle. Organisation for Economic Co-operation and Development. https://www.oecd.org.
+
+Papanikos, Gregory T. 2022. “The Demographics of COVID-19 in the European Union.” In Essays on COVID-19 Research, 217–228. Athens: AITNER.
+
+Tsiang, J. T. 2021. “COVID-19 Case and Death Rate Comparisons Between 5G mmWave and Non-5G mmWave Jurisdictions in the United States.” Medical Research Archives 9 (11). https://esmed.org/MRA/mra/article/view/2371.
+
+WHO. 2022. WHO Regional Office for Europe—COVID-19 Dashboard and Epidemiological Updates. World Health Organization. https://www.who.int.
+
+<div class="footer-note">
+  Final Project 1 | MSDS 401: Applied Statistics with R | Northwestern University
+</div>
